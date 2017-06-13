@@ -43,7 +43,7 @@ function getVersioningParams(status) {
 
 // Get a complete replication configuration, or remove the specified property.
 const replicationConfig = {
-    Role: 'arn:partition:service::account-id:resourcetype/resource',
+    Role: 'arn:aws:iam::account-id:role/resource',
     Rules: [
         {
             Destination: {
