@@ -368,7 +368,11 @@ version. S3 checks if versioning is suspended or has never been
 configured, and sets the ``versionId`` option to ``''`` in PUT calls to
 the metadata engine when creating a new null version.
 
-The tables below show the keys resulting from PUT calls to metadata if
+If the master version is a null version, S3 also sends a DELETE call to metadata
+prior to the PUT, in order to clean up any pre-existing null versions which may,
+in certain edge cases, have been stored as a separate version. [1]_
+
+The tables below summarize the calls to metadata and the resulting keys if
 we put an object 'foo' twice, when versioning has not been enabled or is
 suspended.
 
@@ -380,7 +384,16 @@ suspended.
 | foo (null)   | A       |
 +--------------+---------+
 
-(2) PUT foo (second put), versionId: ``''``
+(2A) DELETE foo (clean-up delete before second put),
+versionId: ``<version id of master version>``
+
++--------------+---------+
+| key          | value   |
++==============+=========+
+|              |         |
++--------------+---------+
+
+(2B) PUT foo (second put), versionId: ``''``
 
 +--------------+---------+
 | key          | value   |
@@ -390,6 +403,13 @@ suspended.
 
 The S3 API also sets the ``isNull`` attribute to ``true`` in the version
 metadata before storing the metadata for these null versions.
+
+.. [1]  Some examples of these cases are: (1) when there is a null version
+        that is the second-to-latest version, and the latest version has been
+        deleted, causing metadata to repair the master value with the value of
+        the null version and (2) when putting object tag or ACL on a null
+        version that is the master version, as explained in `"Behavior of
+        Object-Targeting APIs" <#behavior-of-object-targeting-apis>`__.
 
 Case 2: Preserving Existing Null Versions in Versioning-Enabled Bucket
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -564,10 +584,16 @@ Versioning Suspended
 
 If versioning is suspended and there is existing object metadata:
 
--  If the master version is a null version or has no version ID:
+-  If the master version has no version ID:
 
-   -  overwrite the master version with the new metadata
+   -  overwrite the master version with the new metadata (PUT ``versionId: ''``)
    -  delete previous object data
+
+- If the master version is a null version:
+
+   -  delete the null version using the `versionId` metadata attribute of the
+      master version (PUT ``versionId: <versionId of master object MD>``)
+   -  put a new null version (PUT ``versionId: ''``)
 
 -  If master is not a null version and ``nullVersionId`` is defined in
    the object’s metadata:
@@ -601,7 +627,7 @@ the object. However, when updating the latest version, such as with the
 Put Object ACL API, S3 sets the ``versionId`` option in the PUT call to
 metadata to the value stored in the object metadata's ``versionId``
 attribute. This is done in order to update the metadata both in the
-master version and the version itself, if it is not a null version.
+master version and the version itself, if it is not a null version. [2]_
 
 When a version id is specified in the request query for these APIs, e.g.
 ``GET /foo?versionId=v1``, S3 will attempt to decode the version ID and
@@ -697,6 +723,12 @@ the following checks regarding delete markers:
 -  If the ``isDeleteMarker`` property is set to true, return
    ``405 MethodNotAllowed`` or ``400 InvalidRequest``
 
+.. [2]  If it is a null version, this call will overwrite the null version
+        if it is stored in its own key (``foo\0<versionId>``). If the null
+        version is stored only in the master version, this call will both
+        overwrite the master version *and* create a new key
+        (``foo\0<versionId>``), resulting in the edge case referred to by the
+        previous footnote [1]_.
 
 Data-metadata daemon Architecture and Operational guide
 =======================================================
