@@ -370,7 +370,7 @@ the metadata engine when creating a new null version.
 
 If the master version is a null version, S3 also sends a DELETE call to metadata
 prior to the PUT, in order to clean up any pre-existing null versions which may,
-in certain edge cases, have been stored as a separate version.[#1]_
+in certain edge cases, have been stored as a separate version. [1]_
 
 The tables below summarize the calls to metadata and the resulting keys if
 we put an object 'foo' twice, when versioning has not been enabled or is
@@ -404,13 +404,12 @@ versionId: ``<version id of master version>``
 The S3 API also sets the ``isNull`` attribute to ``true`` in the version
 metadata before storing the metadata for these null versions.
 
-.. [#1] Some examples of these edge cases are: (1) when there is a null version
+.. [1]  Some examples of these cases are: (1) when there is a null version
         that is the second-to-latest version, and the latest version has been
         deleted, causing metadata to repair the master value with the value of
         the null version and (2) when putting object tag or ACL on a null
         version that is the master version, as explained in `"Behavior of
         Object-Targeting APIs" <#behavior-of-object-targeting-apis>`__.
-
 
 Case 2: Preserving Existing Null Versions in Versioning-Enabled Bucket
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -628,20 +627,13 @@ the object. However, when updating the latest version, such as with the
 Put Object ACL API, S3 sets the ``versionId`` option in the PUT call to
 metadata to the value stored in the object metadata's ``versionId``
 attribute. This is done in order to update the metadata both in the
-master version and the version itself, if it is not a null version[#2]_.
+master version and the version itself, if it is not a null version. [2]_
 
 When a version id is specified in the request query for these APIs, e.g.
 ``GET /foo?versionId=v1``, S3 will attempt to decode the version ID and
 perform the action on the appropriate version. To do so, the API sets
 the value of the ``versionId`` option to the decoded version ID in the
 metadata call.
-
-.. [#2] If it is a null version, this call will overwrite the null version
-       if it is stored in its own key (``foo\0<versionId>``). If the null
-       version is stored only in the master version, this call will both
-       overwrite the master version *and* create a new key
-       (``foo\0<versionId>``), resulting in the edge case referred to by the
-       previous footnote 1_.
 
 Delete Markers
 ^^^^^^^^^^^^^^
@@ -731,6 +723,12 @@ the following checks regarding delete markers:
 -  If the ``isDeleteMarker`` property is set to true, return
    ``405 MethodNotAllowed`` or ``400 InvalidRequest``
 
+.. [2]  If it is a null version, this call will overwrite the null version
+        if it is stored in its own key (``foo\0<versionId>``). If the null
+        version is stored only in the master version, this call will both
+        overwrite the master version *and* create a new key
+        (``foo\0<versionId>``), resulting in the edge case referred to by the
+        previous footnote [1]_.
 
 Data-metadata daemon Architecture and Operational guide
 =======================================================
