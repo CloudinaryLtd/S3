@@ -177,11 +177,13 @@ PUT
 -  no options: original PUT operation, will update the master version
 -  ``versioning: true`` create a new version of the object, then update
    the master version with this version.
--  ``versionId: <versionId>`` update a specific version (for updating
-   version's ACL or tags, or remote updates in geo-replication
-
+-  ``versionId: <versionId>`` create or update a specific version (for updating
+   version's ACL or tags, or remote updates in geo-replication)
    -  if the version identified by ``versionId`` happens to be the latest
       version, the master version will be updated as well
+   -  if the master version is not as recent as the version identified by
+      ``versionId``, as may happen with cross-region replication, the master
+      will be updated as well
    -  note that with ``versionId`` set to an empty string ``''``, it will
       overwrite the master version only (same as no options, but the master
       version will have a ``versionId`` property set in its metadata like
@@ -192,21 +194,8 @@ PUT
       versions once versioning has been suspended, which is discussed in
       `"Null Version Management" <#null-version-management>`__.
 
-Only one option is used at a time. ``versionId: <versionId>`` does not
-have to be used with ``versioning: true`` set to work, nor should they
-both be set. If both are used at once, the metadata engine will return
-an error.
-
-To summarize the valid combinations of versioning options:
-
--  ``!versioning && !versionId``: normal non-versioning PUT
--  ``versioning && !versionId``: create a new version, update the master
-   version
--  ``!versioning && versionId``: update (PUT/DELETE) an existing version
-    -  if ``versionId === ''`` update master version
-
-Other cases are invalid and the metadata engine returns the error
-``BadRequest``.
+In general, only one option is used at a time. When ``versionId`` and
+``versioning`` are both set, only the ``versionId`` option will have an effect.
 
 DELETE
 ^^^^^^
